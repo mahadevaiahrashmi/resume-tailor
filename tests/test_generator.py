@@ -7,6 +7,7 @@ import pytest
 
 from app.generator import (
     GenerationError,
+    _scrub_controls,
     extract_json,
     generate_documents,
     parse_docs,
@@ -54,6 +55,22 @@ def test_parse_docs_tolerates_control_chars_in_strings():
     docs = parse_docs(raw)
     assert "line one" in docs.resume.summary
     assert "line two" in docs.resume.summary
+
+
+def test_parse_docs_scrubs_xml_illegal_control_chars():
+    # A literal newline parses with strict=False but must be folded to a space
+    # before rendering (renderers require XML-valid text). See _scrub_controls test.
+    raw = '{"resume": {"contact": {"name": "XY"}, "summary": "a\nb"}, "cover_letter": {}}'
+    docs = parse_docs(raw)
+    assert docs.resume.contact.name == "XY"
+    assert docs.resume.summary == "a b"
+
+
+def test_scrub_controls_drops_illegal_and_folds_whitespace():
+    bell, nul, tab, nl, cr = chr(7), chr(0), chr(9), chr(10), chr(13)
+    assert _scrub_controls("X" + bell + "Y") == "XY"                    # illegal dropped
+    assert _scrub_controls("a" + tab + "b" + nl + "c" + cr + "d") == "a b c d"
+    assert _scrub_controls({"k": ["o" + nul + "k"]}) == {"k": ["ok"]}   # recurses
 
 
 def test_parse_docs_rejects_invalid_json():

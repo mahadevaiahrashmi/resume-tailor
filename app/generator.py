@@ -58,6 +58,23 @@ def extract_json(raw: str) -> str:
     raise GenerationError("Unbalanced JSON braces in model output.")
 
 
+def _scrub_controls(obj):
+    """Strip XML-incompatible control chars from every string in a parsed tree.
+
+    Local models sometimes embed raw control characters (or literal newlines) in
+    string values. They parse fine but break docx/pdf rendering, which requires
+    XML-valid text, so we fold whitespace to spaces and drop the rest.
+    """
+    if isinstance(obj, str):
+        s = obj.replace("\t", " ").replace("\r", " ").replace("\n", " ")
+        return "".join(ch for ch in s if ch >= " ")
+    if isinstance(obj, list):
+        return [_scrub_controls(x) for x in obj]
+    if isinstance(obj, dict):
+        return {k: _scrub_controls(v) for k, v in obj.items()}
+    return obj
+
+
 def parse_docs(raw: str) -> TailoredDocs:
     snippet = extract_json(raw)
     try:
@@ -66,6 +83,7 @@ def parse_docs(raw: str) -> TailoredDocs:
         data = json.loads(snippet, strict=False)
     except json.JSONDecodeError as exc:
         raise GenerationError(f"Model returned invalid JSON: {exc}") from exc
+    data = _scrub_controls(data)
     try:
         docs = TailoredDocs.model_validate(data)
     except ValidationError as exc:
