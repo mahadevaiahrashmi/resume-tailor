@@ -8,7 +8,8 @@
    experience rather than inventing it.
 3. **Show, don't surprise.** Engine detection, status, and a live preview keep
    the user informed at every step.
-4. **Local & private, said plainly.** Privacy is stated in the UI, not buried.
+4. **Privacy, said plainly.** The UI states where data goes — local engines
+   (Ollama, Mock) stay on the device; hosted engines go to their vendor.
 
 ## Layout
 
@@ -66,8 +67,9 @@ Downloads and preview are hidden until a successful run, then revealed together.
 - On load, `app.js` fetches `/providers` and **auto-selects the first detected
   engine**, so a user is never pointed at something they haven't installed.
 - A per-engine hint explains install steps and shows a ✓ when detected.
-- An optional **model** box lets power users override the default model without
-  touching environment variables.
+- A per-engine **model** dropdown lets users override the default model without
+  touching environment variables; it lists each engine's models (Ollama shows
+  installed ones) plus a **Custom…** option to type any model id.
 
 ## Preview design
 
@@ -83,7 +85,7 @@ Downloads and preview are hidden until a successful run, then revealed together.
 
 Short, plain, reassuring. Examples in the UI:
 
-- "Nothing is uploaded to us — generation runs locally via the engine you pick."
+- "No servers of our own. Local engines (Ollama, Mock) keep your text on your machine; hosted engines send it to their vendor."
 - Required fields marked with a red `*`.
 - Errors are shown verbatim from the server so the cause is actionable.
 

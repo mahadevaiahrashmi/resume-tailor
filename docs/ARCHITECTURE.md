@@ -17,6 +17,7 @@ flowchart TD
     PR --> CLA[Claude CLI]
     PR --> GEM[Gemini CLI]
     PR --> OLL[Ollama]
+    PR --> OR[OpenRouter API]
     PR --> MOCK[Mock]
     PR -->|raw JSON| G
     G -->|validate| SCH[schema.TailoredDocs]
@@ -35,7 +36,7 @@ flowchart TD
 | `app/generator.py` | Orchestration: build prompt → call provider → extract & validate JSON → `TailoredDocs`. |
 | `app/prompts.py` | The tailoring prompt, JSON contract, and honesty/length rules. |
 | `app/schema.py` | pydantic models — the single contract between model output and renderers. |
-| `app/providers/` | Provider interface + Claude CLI, Gemini CLI, Ollama, Mock implementations + registry. |
+| `app/providers/` | Provider interface + Claude CLI, Gemini CLI, Ollama, OpenRouter, Mock implementations + registry. |
 | `app/render_pdf.py` | reportlab renderer with one-page auto-fit. |
 | `app/render_docx.py` | python-docx renderer (compact typography for one page). |
 | `app/templates/index.html` | Single-page form + result UI. |
@@ -68,22 +69,29 @@ about the other.
 class LLMProvider(ABC):
     name: str
     label: str
+    models: list[str]                             # suggested model ids for the UI
     def is_available(self) -> bool: ...
     def generate(self, prompt: str) -> str: ...   # returns raw text/JSON
     def setup_hint(self) -> str: ...              # shown when unavailable
+    def suggested_models(self) -> list[str]: ...  # models offered in the dropdown
 ```
 
-- Real providers shell out via `run_cli(cmd, prompt)` (prompt on **stdin**, so
-  length and quoting are never a problem).
+- CLI providers (Claude, Gemini, Ollama) shell out via `run_cli(cmd, prompt)`
+  (prompt on **stdin**, so length and quoting are never a problem). **OpenRouter**
+  instead calls its HTTP API with `httpx`, using an `OPENROUTER_API_KEY` read
+  from the environment.
 - The **registry** (`providers/__init__.py`) maps `name → class`,
   `get_provider(name, model)` instantiates (passing `model` only to engines that
-  need it), and `list_providers()` reports availability to the UI.
+  need it), and `list_providers()` reports availability — plus, for the
+  `/providers` endpoint, each engine's `suggested_models()` — to the UI.
 
 ### Adding a provider (extension point)
 
-1. Create `providers/yourtool.py` with a `LLMProvider` subclass.
+1. Create `providers/yourtool.py` with a `LLMProvider` subclass (set a `models`
+   list, or override `suggested_models()`, to populate its model dropdown).
 2. Register it in `PROVIDERS` (and `_NEEDS_MODEL` if it takes a model).
-3. Add a dropdown `<option>` and a hint string in `app.js` `HINTS`.
+3. Add a hint string in `app.js` `HINTS`. The dropdown option and model list are
+   generated automatically from the registry.
 
 No other code changes — the generator, schema, and renderers are untouched.
 
@@ -97,14 +105,14 @@ No other code changes — the generator, schema, and renderers are untouched.
 | **python-docx** | Standard `.docx` generation employers can open and edit. |
 | **Jinja2** | Server-render the form with provider availability. |
 | **Vanilla JS** | No build toolchain; the frontend is two small static files. |
-| **pytest + httpx** | Offline unit/integration tests via `TestClient`. |
+| **pytest + httpx** | Offline unit/integration tests via `TestClient`; `httpx` also makes the OpenRouter HTTP calls at runtime. |
 
 ## Runtime & configuration
 
 - **Python 3.12** (pydantic-core lacks 3.14 wheels).
 - Configuration is environment-only (no config files):
   `CLAUDE_CMD`, `CLAUDE_MODEL`, `GEMINI_CMD`, `GEMINI_MODEL`, `OLLAMA_CMD`,
-  `OLLAMA_MODEL`.
+  `OLLAMA_MODEL`, `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`.
 - State is the filesystem: generated files live under `generated/<job-hex>/`.
 
 ## Why no database / queue

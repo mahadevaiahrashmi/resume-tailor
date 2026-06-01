@@ -21,6 +21,7 @@ from .base import LLMProvider, cli_exists, run_cli
 class ClaudeCLIProvider(LLMProvider):
     name = "claude"
     label = "Claude CLI"
+    models = ["sonnet", "opus", "haiku"]
 
     def __init__(self, model: str | None = None, timeout: int = 180):
         self.cmd = os.environ.get("CLAUDE_CMD", "claude")

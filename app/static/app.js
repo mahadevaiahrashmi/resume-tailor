@@ -4,10 +4,12 @@ const HINTS = {
   claude: "Uses Anthropic's `claude` CLI. Install: npm i -g @anthropic-ai/claude-code, then sign in. Optional model: sonnet / opus.",
   gemini: "Uses Google's `gemini` CLI. Install: npm i -g @google/gemini-cli, then sign in.",
   ollama: "Open-source. Install from ollama.com, then `ollama pull llama3.1`. Set a model at right.",
+  openrouter: "Hosted models (DeepSeek, Qwen, …). Set OPENROUTER_API_KEY before starting. Optional model, e.g. deepseek/deepseek-chat.",
   mock: "Offline preview — reshapes your resume without a model. Great for checking the layout.",
 };
 
 let AVAILABILITY = {};
+let MODELS = {};
 
 function el(tag, cls, text) {
   const n = document.createElement(tag);
@@ -20,16 +22,41 @@ async function loadProviders() {
   try {
     const res = await fetch("/providers");
     const list = await res.json();
-    list.forEach((p) => (AVAILABILITY[p.name] = p.available));
+    list.forEach((p) => {
+      AVAILABILITY[p.name] = p.available;
+      MODELS[p.name] = p.models || [];
+    });
   } catch (_) { /* non-fatal */ }
   // Default to the first detected engine so users aren't pointed at an
-  // uninstalled one. Order follows the dropdown (claude, gemini, ollama, mock).
+  // uninstalled one. Order follows the dropdown (claude, gemini, ollama,
+  // openrouter, mock).
   const sel = document.getElementById("provider");
   if (!AVAILABILITY[sel.value]) {
     const firstAvail = Array.from(sel.options).find((o) => AVAILABILITY[o.value]);
     if (firstAvail) sel.value = firstAvail.value;
   }
   updateHint();
+  buildModelOptions();
+}
+
+// Rebuild the model dropdown for the selected engine: a default entry, the
+// engine's suggested models, and a "Custom…" escape hatch for any other id.
+function buildModelOptions() {
+  const provider = document.getElementById("provider").value;
+  const sel = document.getElementById("model");
+  sel.innerHTML = "";
+  sel.appendChild(new Option("Default model", ""));
+  (MODELS[provider] || []).forEach((m) => sel.appendChild(new Option(m, m)));
+  sel.appendChild(new Option("Custom…", "__custom__"));
+  sel.value = "";
+  toggleCustom();
+}
+
+function toggleCustom() {
+  const isCustom = document.getElementById("model").value === "__custom__";
+  const custom = document.getElementById("model-custom");
+  custom.classList.toggle("hidden", !isCustom);
+  if (isCustom) custom.focus();
 }
 
 function updateHint() {
@@ -129,6 +156,10 @@ async function onSubmit(ev) {
   const form = ev.target;
   const btn = document.getElementById("go");
   const data = new FormData(form);
+  // "Custom…" submits the free-text id instead of the sentinel option value.
+  if (data.get("model") === "__custom__") {
+    data.set("model", document.getElementById("model-custom").value.trim());
+  }
 
   btn.disabled = true;
   setStatus("working", "Generating… the first run on a local model can take a minute.");
@@ -160,7 +191,11 @@ async function onSubmit(ev) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("provider").addEventListener("change", updateHint);
+  document.getElementById("provider").addEventListener("change", () => {
+    updateHint();
+    buildModelOptions();
+  });
+  document.getElementById("model").addEventListener("change", toggleCustom);
   document.getElementById("tailor-form").addEventListener("submit", onSubmit);
   document.querySelectorAll(".tab").forEach((t) =>
     t.addEventListener("click", () => switchTab(t.dataset.tab))

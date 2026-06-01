@@ -47,7 +47,7 @@ def index(request: Request):
 
 @app.get("/providers")
 def providers():
-    return list_providers()
+    return list_providers(include_models=True)
 
 
 @app.post("/generate")

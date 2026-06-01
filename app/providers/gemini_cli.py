@@ -18,6 +18,7 @@ from .base import LLMProvider, cli_exists, run_cli
 class GeminiCLIProvider(LLMProvider):
     name = "gemini"
     label = "Gemini CLI"
+    models = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"]
 
     def __init__(self, model: str | None = None, timeout: int = 180):
         self.cmd = os.environ.get("GEMINI_CMD", "gemini")

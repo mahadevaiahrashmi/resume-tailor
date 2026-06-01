@@ -32,11 +32,13 @@ how your documents will look.
 ### 1. Choose an "AI engine"
 At the top there's a dropdown called **AI engine**. Think of this as *which
 helper writes your documents*. The page picks an available one for you, so you
-can usually leave it as-is. You can ignore the small "model" box next to it.
+can usually leave it as-is. You can ignore the **model** dropdown next to it
+(leave it on *Default model*).
 
 > **What's an engine?** It's the program that does the rewriting. Some run on
-> your own computer (private); one option ("Mock") just reshuffles your text so
-> you can preview the layout.
+> your own computer (private); others send your text to a company's online
+> service. One option ("Mock") just reshuffles your text so you can preview the
+> layout.
 
 ### 2. Paste the job posting
 In the box labelled **Job description**, paste the whole job advert — copy it from
@@ -79,8 +81,10 @@ them first. Use the **Resume** and **Cover letter** tabs to switch between them.
 ## Common questions
 
 **Is my information private?**
-Yes. Your text goes only to the helper running on this computer. It is not
-uploaded to this tool's makers.
+It depends on the engine you pick. **Mock** and **Ollama** run on this computer
+and send nothing out. The others (Claude, Gemini, OpenRouter) send your text to
+that company's service to do the writing. Either way, it is never uploaded to
+this tool's makers.
 
 **It says an engine is "not detected." Did I break it?**
 No. That engine just isn't installed on this computer. Choose another from the

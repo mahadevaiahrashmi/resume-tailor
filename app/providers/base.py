@@ -18,6 +18,7 @@ class ProviderError(RuntimeError):
 class LLMProvider(ABC):
     name: str = "base"
     label: str = "Base"
+    models: list[str] = []
 
     @abstractmethod
     def is_available(self) -> bool:
@@ -30,6 +31,10 @@ class LLMProvider(ABC):
     def setup_hint(self) -> str:
         """Human-readable install/setup instructions, shown when unavailable."""
         return ""
+
+    def suggested_models(self) -> list[str]:
+        """Model ids to offer in the UI dropdown; empty means default-only."""
+        return list(self.models)
 
 
 def cli_exists(binary: str) -> bool:

@@ -14,6 +14,7 @@ from app.providers import (
 from app.providers.claude_cli import ClaudeCLIProvider
 from app.providers.gemini_cli import GeminiCLIProvider
 from app.providers.ollama import OllamaProvider
+from app.providers.openrouter import OpenRouterProvider
 
 
 def test_get_provider_defaults_to_mock():
@@ -34,10 +35,32 @@ def test_get_provider_unknown_raises():
 
 def test_list_providers_shape():
     provs = list_providers()
-    assert {p["name"] for p in provs} == {"claude", "gemini", "ollama", "mock"}
+    assert {p["name"] for p in provs} == {"claude", "gemini", "ollama", "openrouter", "mock"}
     assert all({"name", "label", "available"} <= set(p) for p in provs)
     mock = next(p for p in provs if p["name"] == "mock")
     assert mock["available"] is True
+
+
+def test_list_providers_includes_models_when_requested():
+    by_name = {p["name"]: p for p in list_providers(include_models=True)}
+    assert all(isinstance(p["models"], list) for p in by_name.values())
+    assert by_name["claude"]["models"]  # non-empty suggestions
+    assert "deepseek/deepseek-chat" in by_name["openrouter"]["models"]
+    assert by_name["mock"]["models"] == []
+
+
+def test_list_providers_omits_models_by_default():
+    assert all("models" not in p for p in list_providers())
+
+
+def test_ollama_suggested_models_prefers_installed(monkeypatch):
+    monkeypatch.setattr(OllamaProvider, "installed_models", lambda self: ["mymodel:latest"])
+    assert OllamaProvider().suggested_models() == ["mymodel:latest"]
+
+
+def test_ollama_suggested_models_falls_back_to_static(monkeypatch):
+    monkeypatch.setattr(OllamaProvider, "installed_models", lambda self: [])
+    assert OllamaProvider().suggested_models() == ["llama3.1", "qwen2.5", "mistral", "gemma2"]
 
 
 def test_gemini_builds_argv_with_model(monkeypatch):
@@ -111,6 +134,62 @@ def test_ollama_defaults_to_llama(monkeypatch):
                         lambda cmd, prompt, timeout=300: seen.update(cmd=cmd) or "{}")
     OllamaProvider().generate("PROMPT")
     assert seen["cmd"] == ["ollama", "run", "llama3.1"]
+
+
+class _FakeResp:
+    def __init__(self, status_code=200, payload=None, text=""):
+        self.status_code = status_code
+        self._payload = payload or {}
+        self.text = text
+
+    def json(self):
+        return self._payload
+
+
+def test_openrouter_is_available_reflects_key(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-xxx")
+    assert OpenRouterProvider().is_available() is True
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    assert OpenRouterProvider().is_available() is False
+
+
+def test_openrouter_builds_request(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-xxx")
+    monkeypatch.delenv("OPENROUTER_MODEL", raising=False)
+    seen = {}
+
+    def fake_post(url, headers=None, json=None, timeout=None):
+        seen.update(url=url, headers=headers, json=json, timeout=timeout)
+        return _FakeResp(payload={"choices": [{"message": {"content": '{"ok": true}'}}]})
+
+    monkeypatch.setattr("app.providers.openrouter.httpx.post", fake_post)
+    out = OpenRouterProvider(model="qwen/qwen-2.5-72b-instruct").generate("PROMPT")
+    assert seen["url"] == "https://openrouter.ai/api/v1/chat/completions"
+    assert seen["headers"]["Authorization"] == "Bearer sk-or-xxx"
+    assert seen["json"]["model"] == "qwen/qwen-2.5-72b-instruct"
+    assert seen["json"]["messages"] == [{"role": "user", "content": "PROMPT"}]
+    assert out == '{"ok": true}'
+
+
+def test_openrouter_defaults_to_deepseek(monkeypatch):
+    monkeypatch.delenv("OPENROUTER_MODEL", raising=False)
+    assert OpenRouterProvider().model == "deepseek/deepseek-chat"
+
+
+def test_openrouter_missing_key_raises(monkeypatch):
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    with pytest.raises(ProviderError):
+        OpenRouterProvider().generate("PROMPT")
+
+
+def test_openrouter_error_status_raises(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-xxx")
+    monkeypatch.setattr(
+        "app.providers.openrouter.httpx.post",
+        lambda *a, **k: _FakeResp(status_code=401, text="no credit"),
+    )
+    with pytest.raises(ProviderError):
+        OpenRouterProvider().generate("PROMPT")
 
 
 def test_availability_reflects_cli_presence(monkeypatch):

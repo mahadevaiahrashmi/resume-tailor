@@ -21,6 +21,7 @@ DEFAULT_MODEL = "llama3.1"
 class OllamaProvider(LLMProvider):
     name = "ollama"
     label = "Ollama (open source)"
+    models = ["llama3.1", "qwen2.5", "mistral", "gemma2"]
 
     def __init__(self, model: str | None = None, timeout: int = 300):
         self.cmd = os.environ.get("OLLAMA_CMD", "ollama")
@@ -45,6 +46,10 @@ class OllamaProvider(LLMProvider):
             if parts:
                 models.append(parts[0])
         return models
+
+    def suggested_models(self) -> list[str]:
+        # Prefer the user's actually-installed models; fall back to suggestions.
+        return self.installed_models() or list(self.models)
 
     def generate(self, prompt: str) -> str:
         # `ollama run MODEL` reads the prompt from stdin and prints the completion.

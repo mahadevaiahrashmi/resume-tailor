@@ -15,8 +15,9 @@ without handing their resume to an opaque cloud service.
 - G1. Turn a job description + an existing resume into a tailored resume **and**
   cover letter in one action.
 - G2. Output **one-page** documents in **both .docx and .pdf**.
-- G3. Run on a **local** AI engine, with hosted CLIs (**Claude CLI**,
-  **Gemini CLI**) and an **open-source** alternative (**Ollama**) all supported.
+- G3. Support **local** engines (open-source **Ollama**; offline **Mock**) and
+  **hosted** engines (**Claude CLI**, **Gemini CLI**, and **OpenRouter**'s API),
+  selectable per run.
 - G4. Be **honest by construction** — never fabricate experience; only reframe
   what the resume contains.
 - G5. Work **offline for preview** so users can try the layout with no model
@@ -44,7 +45,8 @@ without handing their resume to an opaque cloud service.
 - As an applicant, I can add free-text instructions ("emphasise leadership,
   confident tone") that the engine follows.
 - As an applicant, I can pick which AI engine runs, and see which are installed.
-- As a privacy-conscious user, I'm assured my text only goes to a local engine.
+- As a privacy-conscious user, I can pick a local engine (Ollama or Mock) so my
+  text never leaves my machine.
 - As a first-time user with no model, I can still preview the formatting (mock).
 
 ## 6. Functional requirements
@@ -52,8 +54,8 @@ without handing their resume to an opaque cloud service.
 | ID | Requirement |
 | --- | --- |
 | FR1 | Accept three inputs: job description (required), resume (required), extra instructions (optional). |
-| FR2 | Offer engine selection: Claude CLI, Gemini CLI, Ollama, Mock; show detection status. |
-| FR3 | Allow an optional model override per run (e.g. `sonnet`, `qwen2.5`, `gemini-2.5-flash`). |
+| FR2 | Offer engine selection: Claude CLI, Gemini CLI, Ollama, OpenRouter, Mock; show detection status. |
+| FR3 | Offer a per-run model choice via a per-engine dropdown, with a Custom option for any model id (e.g. `sonnet`, `qwen2.5`, `deepseek/deepseek-chat`). |
 | FR4 | Produce a tailored resume and cover letter as validated structured data. |
 | FR5 | Render each document to one-page **PDF** and **Word**. |
 | FR6 | Return four downloadable files and a live HTML preview of both documents. |
@@ -66,7 +68,7 @@ without handing their resume to an opaque cloud service.
 | --- | --- |
 | NFR1 | **One page:** PDFs must always fit a single A4 page (auto-fit). |
 | NFR2 | **Honesty:** the prompt forbids inventing facts; claims must trace to the resume. |
-| NFR3 | **Privacy:** no third-party network calls from the app itself; engines are local. |
+| NFR3 | **Privacy:** local engines (Ollama, Mock) make no network calls. Hosted engines (Claude CLI, Gemini CLI, OpenRouter) send inputs to their vendor by the user's explicit choice; the app stores no API keys and adds no telemetry. |
 | NFR4 | **Offline-capable:** mock engine + full test suite run with no model and no network. |
 | NFR5 | **Safe rendering:** preview uses DOM text nodes (no HTML injection from model output). |
 | NFR6 | **Setup clarity:** unavailable engines show install hints inline. |

@@ -23,7 +23,10 @@
               <option value="{{ p.name }}">{{ p.label }}{% if not p.available %} — not detected{% endif %}</option>
               {% endfor %}
             </select>
-            <input type="text" id="model" name="model" placeholder="model (optional, e.g. qwen2.5)" />
+            <select id="model" name="model">
+              <option value="">Default model</option>
+            </select>
+            <input type="text" id="model-custom" class="hidden" placeholder="exact model id, e.g. qwen/qwen-2.5-72b-instruct" />
           </div>
           <p class="hint" id="provider-hint"></p>
         </div>
@@ -44,7 +47,7 @@
         </div>
 
         <button type="submit" id="go" class="primary">Generate documents</button>
-        <p class="hint">Nothing is uploaded to us — generation runs locally via the engine you pick.</p>
+        <p class="hint">No servers of our own. Local engines (Ollama, Mock) keep your text on your machine; hosted engines send it to their vendor.</p>
       </form>
     </section>
 
@@ -69,7 +72,7 @@
   </main>
 
   <footer class="foot">
-    Runs with <strong>Claude CLI</strong>, <strong>Gemini CLI</strong>, or <strong>Ollama</strong> (open source). Mock engine works offline.
+    Runs with <strong>Claude CLI</strong>, <strong>Gemini CLI</strong>, <strong>Ollama</strong> (open source), or <strong>OpenRouter</strong> (hosted). Mock engine works offline.
   </footer>
 
   <script src="/static/app.js"></script>

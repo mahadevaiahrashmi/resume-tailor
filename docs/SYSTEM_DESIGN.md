@@ -82,12 +82,15 @@ in [TECH_DEBT.md](TECH_DEBT.md).
 | --- | --- |
 | **Path traversal** on download | `job` must match `^[0-9a-f]{32}$`; the resolved path must start with `generated/` and be an existing file, else 404. |
 | **XSS in preview** | `app.js` renders with `createElement`/`textContent`, never `innerHTML`, so model output can't inject markup. |
-| **Command injection** | Providers pass argv lists to `subprocess.run` (no shell) and feed the prompt on **stdin**. |
-| **Resource abuse** | CLI calls run with timeouts (Claude 180s, Gemini 180s, Ollama 300s) and raise `ProviderError` on timeout/empty/non-zero exit. |
+| **Command injection** | CLI providers pass argv lists to `subprocess.run` (no shell) and feed the prompt on **stdin**. |
+| **API key handling** | `OPENROUTER_API_KEY` is read from the environment, never stored or logged; OpenRouter error bodies are truncated and carry OpenRouter's message, not the key. |
+| **Resource abuse** | Engine calls run with timeouts (Claude/Gemini 180s, Ollama 300s, OpenRouter 180s) and raise `ProviderError` on timeout/empty/non-2xx. |
 | **Empty/garbage input** | JD and resume are required and validated non-empty (400 otherwise). |
 
 > Note: v1 has **no authentication or rate limiting** — it is designed to run
 > locally bound to `127.0.0.1`. Do not expose it to the public internet as-is.
+> Note also that the **hosted** engines (Claude CLI, Gemini CLI, OpenRouter) send
+> your inputs to their vendor; choose Ollama or Mock to keep everything local.
 
 ## Failure modes
 
@@ -115,3 +118,5 @@ These are intentionally deferred (see [TECH_DEBT.md](TECH_DEBT.md)).
 - **Gemini CLI**: network latency to Google; typically seconds.
 - **Ollama**: first run loads the model into memory (can take ~a minute);
   subsequent runs are faster. The UI's "working" copy sets this expectation.
+- **OpenRouter**: a single hosted HTTP call; latency depends on OpenRouter and
+  the chosen model, typically seconds.
