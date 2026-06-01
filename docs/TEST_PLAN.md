@@ -13,7 +13,7 @@ Run:
 ./.venv/bin/python -m pytest
 ```
 
-Current status: **61 tests passing.**
+Current status: **65 tests passing.**
 
 ## Coverage map
 
@@ -22,7 +22,7 @@ Current status: **61 tests passing.**
 | `tests/test_schema.py` | Domain | Model defaults; `with_contact_fallback` signs the cover letter only when empty. |
 | `tests/test_generator.py` | Domain | `extract_json` (plain, fenced, prose-wrapped, brace-in-string, no-object); `parse_docs` (valid, invalid JSON, schema mismatch, **repairs trailing commas + curly quotes**); `generate_documents` (empty inputs, mock success, unavailable-engine hint, provider-error wrapping, **retries once on bad JSON then succeeds**, **gives up after one retry**). |
 | `tests/test_providers.py` | Adapters | Registry (`get_provider` default/model/unknown, `list_providers` shape); Claude argv with/without model; Gemini argv with/without model; Ollama `run` argv + default model; availability reflects `cli_exists`; mock always available and schema-valid. **OpenRouter:** availability reflects `OPENROUTER_API_KEY`, request shape (bearer header, model, messages) via a stubbed `httpx.post`, default model, `ProviderError` on missing key / non-200. **Model lists:** `list_providers(include_models=True)` shape, default omits models, Ollama prefers installed models else falls back. |
-| `tests/test_render.py` | Adapters | Resume & cover PDFs start with `%PDF` and are **exactly one page**; a near-budget "dense" resume still fits one page (auto-fit); DOCX files reload and contain name, headings, skills, bullets; cover-letter signature fallback. |
+| `tests/test_render.py` | Adapters | Resume & cover PDFs start with `%PDF` and are **exactly one page**; a near-budget "dense" resume still fits one page (auto-fit); `resume_fit_scale` is `1.0` when content fits and `<1.0` when overflowing; the **DOCX mirrors that scale** (type shrinks in lockstep, so Word matches the PDF's one-page fit); DOCX files reload and contain name, headings, skills, bullets; cover-letter signature fallback. |
 | `tests/test_api.py` | Web | `/` renders the form; `/providers` lists mock as available; `/generate` returns 4 files + preview; downloads return correct `Content-Type` + `attachment`; empty JD → 400; non-hex job → 404; path-traversal → 404. **TTL cleanup:** `cleanup_generated` removes only old 32-hex job dirs (leaves fresh + non-job dirs), is disabled at `ttl<=0`, and `/generate` sweeps stale dirs. |
 
 ## Key assertions
@@ -71,9 +71,10 @@ engines:
 
 ## Known gaps / future tests
 
-- No test asserts DOCX **page count** (python-docx can't measure layout) — see
-  [TECH_DEBT.md](TECH_DEBT.md).
+- No test asserts DOCX **page count** directly (python-docx can't measure
+  layout); instead we assert the DOCX honours the PDF's fit scale — see
+  [TECH_DEBT.md](TECH_DEBT.md) item #1.
 - No end-to-end test against a *real* local model (intentionally — keeps CI
   offline and deterministic).
 - No load/concurrency tests (v1 is single-user).
-- No coverage threshold gate / CI workflow yet.
+- No coverage threshold gate yet (CI workflow runs the suite on every push/PR).

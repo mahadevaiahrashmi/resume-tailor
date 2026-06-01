@@ -143,15 +143,35 @@ def _build_to_bytes(flowables: list, top: float, bottom: float) -> tuple[int, by
     return doc.page, buf.getvalue()
 
 
-def render_resume_pdf(resume: ResumeContent, out_path: str) -> str:
-    """Write the resume PDF, shrinking type until it fits one page."""
-    last_bytes = b""
+def _resume_pdf_at(resume: ResumeContent, scale: float) -> tuple[int, bytes]:
+    st = _resume_styles(scale)
+    return _build_to_bytes(_resume_flowables(resume, st), top=26, bottom=22)
+
+
+def resume_fit_scale(resume: ResumeContent) -> float:
+    """The largest `RESUME_SCALES` value at which the resume fits one page.
+
+    Exposed so the DOCX renderer can mirror the PDF's one-page decision (Word
+    has no layout engine of its own to measure against).
+    """
     for scale in RESUME_SCALES:
-        st = _resume_styles(scale)
-        pages, data = _build_to_bytes(_resume_flowables(resume, st), top=26, bottom=22)
-        last_bytes = data
+        pages, _ = _resume_pdf_at(resume, scale)
         if pages <= 1:
-            break
+            return scale
+    return RESUME_SCALES[-1]
+
+
+def render_resume_pdf(resume: ResumeContent, out_path: str, scale: float | None = None) -> str:
+    """Write the resume PDF. With `scale=None`, shrink type until it fits one page."""
+    if scale is None:
+        last_bytes = b""
+        for s in RESUME_SCALES:
+            pages, data = _resume_pdf_at(resume, s)
+            last_bytes = data
+            if pages <= 1:
+                break
+    else:
+        _, last_bytes = _resume_pdf_at(resume, scale)
     with open(out_path, "wb") as fh:
         fh.write(last_bytes)
     return out_path
@@ -198,18 +218,35 @@ def _cover_flowables(cl: CoverLetter, contact: Contact, st: dict) -> list:
     return flow
 
 
-def render_cover_letter_pdf(cl: CoverLetter, contact: Contact, out_path: str) -> str:
-    last_bytes = b""
+def _cover_pdf_at(cl: CoverLetter, contact: Contact, scale: float) -> tuple[int, bytes]:
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=72, rightMargin=72,
+                            topMargin=72, bottomMargin=54,
+                            title="Cover Letter", author="Resume Tailor")
+    doc.build(_cover_flowables(cl, contact, _cover_styles(scale)))
+    return doc.page, buf.getvalue()
+
+
+def cover_letter_fit_scale(cl: CoverLetter, contact: Contact) -> float:
+    """The largest `RESUME_SCALES` value at which the cover letter fits one page."""
     for scale in RESUME_SCALES:
-        st = _cover_styles(scale)
-        buf = io.BytesIO()
-        doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=72, rightMargin=72,
-                                topMargin=72, bottomMargin=54,
-                                title="Cover Letter", author="Resume Tailor")
-        doc.build(_cover_flowables(cl, contact, st))
-        last_bytes = buf.getvalue()
-        if doc.page <= 1:
-            break
+        pages, _ = _cover_pdf_at(cl, contact, scale)
+        if pages <= 1:
+            return scale
+    return RESUME_SCALES[-1]
+
+
+def render_cover_letter_pdf(cl: CoverLetter, contact: Contact, out_path: str,
+                            scale: float | None = None) -> str:
+    if scale is None:
+        last_bytes = b""
+        for s in RESUME_SCALES:
+            pages, data = _cover_pdf_at(cl, contact, s)
+            last_bytes = data
+            if pages <= 1:
+                break
+    else:
+        _, last_bytes = _cover_pdf_at(cl, contact, scale)
     with open(out_path, "wb") as fh:
         fh.write(last_bytes)
     return out_path

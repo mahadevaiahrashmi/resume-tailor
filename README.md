@@ -91,12 +91,12 @@ resume-tailor/
 │   ├── generator.py       prompt → provider → validated TailoredDocs
 │   ├── prompts.py         the tailoring prompt + JSON contract
 │   ├── schema.py          pydantic models (the LLM output contract)
-│   ├── render_pdf.py      reportlab → 1-page PDF (auto-fit)
-│   ├── render_docx.py     python-docx → Word
+│   ├── render_pdf.py      reportlab → 1-page PDF (auto-fit) + fit-scale solver
+│   ├── render_docx.py     python-docx → Word (mirrors the PDF's fit scale)
 │   ├── providers/         claude_cli, gemini_cli, ollama, openrouter, mock + registry
 │   ├── templates/         index.html
 │   └── static/            style.css, app.js
-├── tests/                 pytest suite (61 tests)
+├── tests/                 pytest suite (65 tests)
 ├── docs/                  product, architecture, user, test docs
 ├── requirements.txt
 └── run.sh

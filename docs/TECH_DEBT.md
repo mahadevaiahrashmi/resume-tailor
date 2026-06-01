@@ -9,13 +9,14 @@ tailoring); these matter most if the app is hardened or hosted.
 
 ---
 
-### 1. DOCX has no measured one-page fit 🟡
-`render_docx` relies on compact typography plus the prompt's length budgets, not
-a real layout measurement — python-docx has no layout engine. A very long resume
-can spill onto a second Word page even though the PDF (which *is* auto-fit) stays
-on one.
-**Fix:** convert/measure via LibreOffice headless or a docx→pdf check in CI; or
-mirror the PDF's scale decision into font sizing. **Workaround:** trim a bullet.
+### 1. DOCX one-page fit 🟡 — ✅ resolved
+python-docx has no layout engine, so the DOCX renderer can't measure its own page
+count. Instead, `/generate` solves the one-page fit **once on the PDF**
+(`resume_fit_scale` / `cover_letter_fit_scale`) and renders both formats at that
+same `scale`, so the Word file shrinks in lockstep with the PDF rather than
+spilling onto a second page. A headless-LibreOffice round-trip would measure Word
+directly but adds a heavy dependency; mirroring the PDF's decision is good enough
+for the single-user case.
 
 ### 2. `generated/` cleanup 🟡 — ✅ resolved
 Every run writes four files under `generated/<job>/`. `cleanup_generated()` now
@@ -82,7 +83,7 @@ document clearly (done in README/USER_MANUAL).
 
 | # | Item | Impact | Effort |
 | --- | --- | --- | --- |
-| 1 | DOCX no measured fit | 🟡 | M |
+| 1 | DOCX one-page fit | ✅ done | S |
 | 2 | `generated/` cleanup | ✅ done | S |
 | 3 | Blocking generation | 🟡 | M |
 | 4 | No auth/rate limit (if hosted) | 🔴 | M |
@@ -94,4 +95,4 @@ document clearly (done in README/USER_MANUAL).
 | 10 | CI pipeline | ✅ done | S |
 | 11 | Python 3.12 pin | 🟢 | — |
 
-Priorities if hardening for shared/hosted use: **#4 → #3** (#2, #6, #10 now resolved).
+Priorities if hardening for shared/hosted use: **#4 → #3** (#1, #2, #6, #10 now resolved).

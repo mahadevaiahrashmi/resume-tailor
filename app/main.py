@@ -23,7 +23,12 @@ from fastapi.templating import Jinja2Templates
 from .generator import GenerationError, generate_documents
 from .providers import list_providers
 from .render_docx import render_cover_letter_docx, render_resume_docx
-from .render_pdf import render_cover_letter_pdf, render_resume_pdf
+from .render_pdf import (
+    cover_letter_fit_scale,
+    render_cover_letter_pdf,
+    render_resume_pdf,
+    resume_fit_scale,
+)
 
 BASE = Path(__file__).resolve().parent
 GEN = BASE.parent / "generated"
@@ -106,10 +111,14 @@ def generate(
         "cover_pdf": f"{slug}_CoverLetter.pdf",
         "cover_docx": f"{slug}_CoverLetter.docx",
     }
-    render_resume_pdf(docs.resume, str(job_dir / names["resume_pdf"]))
-    render_resume_docx(docs.resume, str(job_dir / names["resume_docx"]))
-    render_cover_letter_pdf(docs.cover_letter, docs.resume.contact, str(job_dir / names["cover_pdf"]))
-    render_cover_letter_docx(docs.cover_letter, docs.resume.contact, str(job_dir / names["cover_docx"]))
+    # Solve the one-page fit once on the PDF, then render both formats at that
+    # scale so the Word file matches the PDF instead of spilling to a 2nd page.
+    resume_scale = resume_fit_scale(docs.resume)
+    cover_scale = cover_letter_fit_scale(docs.cover_letter, docs.resume.contact)
+    render_resume_pdf(docs.resume, str(job_dir / names["resume_pdf"]), scale=resume_scale)
+    render_resume_docx(docs.resume, str(job_dir / names["resume_docx"]), scale=resume_scale)
+    render_cover_letter_pdf(docs.cover_letter, docs.resume.contact, str(job_dir / names["cover_pdf"]), scale=cover_scale)
+    render_cover_letter_docx(docs.cover_letter, docs.resume.contact, str(job_dir / names["cover_docx"]), scale=cover_scale)
 
     def url(key):
         return f"/download/{job}/{names[key]}"
