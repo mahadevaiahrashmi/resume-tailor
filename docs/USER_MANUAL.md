@@ -108,6 +108,7 @@ match; if your resume is unusually long, trim a bullet or two for best fit.
 | `OLLAMA_MODEL` | `llama3.1` | Default Ollama model |
 | `OPENROUTER_API_KEY` | (unset) | OpenRouter key; required for that engine. Read from env, never stored. |
 | `OPENROUTER_MODEL` | `deepseek/deepseek-chat` | Default OpenRouter model |
+| `GENERATED_TTL_HOURS` | `24` | Each `/generate` deletes job folders in `generated/` older than this; set `0` to keep everything |
 | `HOST` / `PORT` | `127.0.0.1` / `8000` | Server bind (via `run.sh`) |
 
 A per-run **model** picked in the UI overrides `*_MODEL` for that request.
@@ -131,7 +132,7 @@ A per-run **model** picked in the UI overrides `*_MODEL` for that request.
 | "OpenRouter returned 401/402" | Bad or unfunded key. Check the key and your OpenRouter credit. |
 | Ollama first run is slow | The model is loading into memory; subsequent runs are faster. |
 | 400 "Job description is empty" | Fill both required fields. |
-| 400 "Model returned invalid JSON" | The local model didn't follow the JSON contract; retry, or try a stronger model. |
+| 400 "Model returned invalid JSON" | The app already retries once and repairs common slips (trailing commas, curly quotes); if it still fails the model isn't following the JSON contract — retry or pick a stronger model. |
 | `pip install` fails on pydantic-core | You're on Python 3.14. Recreate `.venv` with 3.12. |
 | Output spills to 2 pages (Word) | DOCX has no auto-fit; trim a bullet (see [TECH_DEBT.md](TECH_DEBT.md)). |
 

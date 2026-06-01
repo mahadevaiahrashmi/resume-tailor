@@ -8,7 +8,10 @@ Routes:
 """
 from __future__ import annotations
 
+import os
 import re
+import shutil
+import time
 import uuid
 from pathlib import Path
 
@@ -26,7 +29,35 @@ BASE = Path(__file__).resolve().parent
 GEN = BASE.parent / "generated"
 GEN.mkdir(exist_ok=True)
 
+# Generated output accumulates one dir per run; sweep dirs older than this on each
+# request. Set GENERATED_TTL_HOURS=0 to disable cleanup and keep everything.
+GENERATED_TTL_HOURS = float(os.environ.get("GENERATED_TTL_HOURS", "24"))
+
+JOB_RE = re.compile(r"[0-9a-f]{32}")
+
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+
+def cleanup_generated(root: Path, ttl_hours: float) -> int:
+    """Delete job dirs older than `ttl_hours`; return how many were removed.
+
+    Only touches 32-hex dirs we created, never anything else dropped in
+    `generated/`. A non-positive TTL disables cleanup.
+    """
+    if ttl_hours <= 0 or not root.exists():
+        return 0
+    cutoff = time.time() - ttl_hours * 3600
+    removed = 0
+    for child in root.iterdir():
+        if not (child.is_dir() and JOB_RE.fullmatch(child.name)):
+            continue
+        try:
+            if child.stat().st_mtime < cutoff:
+                shutil.rmtree(child, ignore_errors=True)
+                removed += 1
+        except OSError:
+            pass
+    return removed
 
 app = FastAPI(title="Resume Tailor")
 app.mount("/static", StaticFiles(directory=str(BASE / "static")), name="static")
@@ -58,6 +89,7 @@ def generate(
     provider: str = Form("mock"),
     model: str = Form(""),
 ):
+    cleanup_generated(GEN, GENERATED_TTL_HOURS)
     try:
         docs = generate_documents(jd, resume, instructions, provider, model or None)
     except GenerationError as exc:
@@ -96,7 +128,7 @@ def generate(
 
 @app.get("/download/{job}/{filename}")
 def download(job: str, filename: str):
-    if not re.fullmatch(r"[0-9a-f]{32}", job):
+    if not JOB_RE.fullmatch(job):
         raise HTTPException(status_code=404, detail="Not found")
     path = (GEN / job / filename).resolve()
     if not str(path).startswith(str(GEN.resolve()) + "/") or not path.is_file():

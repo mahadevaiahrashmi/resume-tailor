@@ -6,6 +6,7 @@ code fences and isolates the first balanced JSON object before parsing.
 from __future__ import annotations
 
 import json
+import re
 
 from pydantic import ValidationError
 
@@ -75,14 +76,30 @@ def _scrub_controls(obj):
     return obj
 
 
+def _repair_json(snippet: str) -> str:
+    """Best-effort fixes for the JSON mistakes instruct models commonly make.
+
+    Conservative on purpose: only normalises curly double-quotes to straight ones
+    and drops trailing commas before a closing brace/bracket. Both are frequent
+    and unambiguous; riskier rewrites (single quotes, Python literals) are left
+    alone so we never silently corrupt the candidate's text.
+    """
+    s = snippet.replace("“", '"').replace("”", '"')
+    s = re.sub(r",(\s*[}\]])", r"\1", s)
+    return s
+
+
 def parse_docs(raw: str) -> TailoredDocs:
     snippet = extract_json(raw)
     try:
         # strict=False tolerates literal newlines/tabs inside string values,
         # which local models (e.g. via Ollama) routinely emit unescaped.
         data = json.loads(snippet, strict=False)
-    except json.JSONDecodeError as exc:
-        raise GenerationError(f"Model returned invalid JSON: {exc}") from exc
+    except json.JSONDecodeError:
+        try:
+            data = json.loads(_repair_json(snippet), strict=False)
+        except json.JSONDecodeError as exc:
+            raise GenerationError(f"Model returned invalid JSON: {exc}") from exc
     data = _scrub_controls(data)
     try:
         docs = TailoredDocs.model_validate(data)
@@ -91,12 +108,20 @@ def parse_docs(raw: str) -> TailoredDocs:
     return docs.with_contact_fallback()
 
 
+_RETRY_SUFFIX = (
+    "\n\nIMPORTANT: Your previous reply could not be parsed. Respond with ONLY one "
+    "valid JSON object matching the schema — no prose, no markdown fences, no "
+    "trailing commas."
+)
+
+
 def generate_documents(
     jd: str,
     resume: str,
     instructions: str = "",
     provider_name: str = "mock",
     model: str | None = None,
+    retries: int = 1,
 ) -> TailoredDocs:
     if not jd.strip():
         raise GenerationError("Job description is empty.")
@@ -108,8 +133,16 @@ def generate_documents(
         raise GenerationError(provider.setup_hint() or f"Provider '{provider_name}' is unavailable.")
 
     prompt = build_prompt(jd, resume, instructions)
-    try:
-        raw = provider.generate(prompt)
-    except ProviderError as exc:
-        raise GenerationError(str(exc)) from exc
-    return parse_docs(raw)
+    last_err: GenerationError | None = None
+    for attempt in range(retries + 1):
+        # On a retry, append a firm reminder to emit clean JSON.
+        attempt_prompt = prompt if attempt == 0 else prompt + _RETRY_SUFFIX
+        try:
+            raw = provider.generate(attempt_prompt)
+        except ProviderError as exc:
+            raise GenerationError(str(exc)) from exc
+        try:
+            return parse_docs(raw)
+        except GenerationError as exc:
+            last_err = exc  # malformed JSON or schema mismatch — regenerate, then give up
+    raise last_err

@@ -73,6 +73,20 @@ def test_scrub_controls_drops_illegal_and_folds_whitespace():
     assert _scrub_controls({"k": ["o" + nul + "k"]}) == {"k": ["ok"]}   # recurses
 
 
+def test_parse_docs_repairs_trailing_commas():
+    # Trailing commas are invalid JSON but a very common instruct-model slip.
+    raw = '{"resume": {"contact": {"name": "X"},}, "cover_letter": {},}'
+    docs = parse_docs(raw)
+    assert docs.resume.contact.name == "X"
+
+
+def test_parse_docs_repairs_curly_quotes():
+    # Some models "prettify" quotes; normalise curly doubles to straight ones.
+    raw = '{“resume”: {“contact”: {“name”: “X”}}, “cover_letter”: {}}'
+    docs = parse_docs(raw)
+    assert docs.resume.contact.name == "X"
+
+
 def test_parse_docs_rejects_invalid_json():
     with pytest.raises(GenerationError):
         parse_docs("{ this is not valid json }")
@@ -122,3 +136,44 @@ def test_generate_documents_wraps_provider_error(
     with pytest.raises(GenerationError) as ei:
         generate_documents(sample_jd, sample_resume, provider_name="gemini")
     assert "CLI blew up" in str(ei.value)
+
+
+class _ScriptedProvider:
+    """A provider that returns a queued list of replies on successive calls."""
+
+    def __init__(self, replies):
+        self._replies = list(replies)
+        self.calls = 0
+
+    def is_available(self):
+        return True
+
+    def setup_hint(self):
+        return ""
+
+    def generate(self, _prompt):
+        self.calls += 1
+        return self._replies.pop(0)
+
+
+def test_generate_documents_retries_once_on_bad_json(
+    sample_jd, sample_resume, monkeypatch
+):
+    good = json.dumps({"resume": {"contact": {"name": "Retry Win"}}, "cover_letter": {}})
+    prov = _ScriptedProvider(["definitely not json", good])
+    monkeypatch.setattr("app.generator.get_provider", lambda *_a, **_k: prov)
+
+    docs = generate_documents(sample_jd, sample_resume, provider_name="any")
+    assert prov.calls == 2  # first reply failed, second succeeded
+    assert docs.resume.contact.name == "Retry Win"
+
+
+def test_generate_documents_gives_up_after_one_retry(
+    sample_jd, sample_resume, monkeypatch
+):
+    prov = _ScriptedProvider(["nope", "still nope"])
+    monkeypatch.setattr("app.generator.get_provider", lambda *_a, **_k: prov)
+
+    with pytest.raises(GenerationError):
+        generate_documents(sample_jd, sample_resume, provider_name="any")
+    assert prov.calls == 2  # one initial attempt + one retry, then surfaces the error

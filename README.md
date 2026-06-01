@@ -96,7 +96,7 @@ resume-tailor/
 │   ├── providers/         claude_cli, gemini_cli, ollama, openrouter, mock + registry
 │   ├── templates/         index.html
 │   └── static/            style.css, app.js
-├── tests/                 pytest suite (54 tests)
+├── tests/                 pytest suite (61 tests)
 ├── docs/                  product, architecture, user, test docs
 ├── requirements.txt
 └── run.sh
@@ -133,4 +133,6 @@ engines send your inputs to their vendor's API by design — Claude CLI to
 Anthropic, Gemini CLI to Google, and **OpenRouter** to OpenRouter (using a key
 you set via `OPENROUTER_API_KEY`, which the app reads from the environment and
 never stores). The app adds no telemetry of its own. Generated files are written
-to `resume-tailor/generated/` (git-ignored) and served back to your browser.
+to `resume-tailor/generated/` (git-ignored) and served back to your browser; each
+run sweeps job folders older than `GENERATED_TTL_HOURS` (default 24) so they don't
+pile up.

@@ -1,11 +1,14 @@
 """API routes via TestClient, including the download path-traversal guard."""
 from __future__ import annotations
 
+import os
+import time
+
 import pytest
 from fastapi.testclient import TestClient
 
 from app import main
-from app.main import DOCX_MIME
+from app.main import DOCX_MIME, cleanup_generated
 
 
 @pytest.fixture
@@ -67,3 +70,47 @@ def test_download_rejects_path_traversal(client):
     job = "a" * 32  # well-formed hex job id, but the file escapes the dir
     r = client.get(f"/download/{job}/..%2f..%2fmain.py")
     assert r.status_code == 404
+
+
+def test_cleanup_generated_removes_only_old_job_dirs(tmp_path):
+    old = tmp_path / ("a" * 32)
+    old.mkdir()
+    (old / "Resume.pdf").write_text("x")
+    fresh = tmp_path / ("b" * 32)
+    fresh.mkdir()
+    stranger = tmp_path / "keep-me"  # not a job dir → must never be touched
+    stranger.mkdir()
+
+    backdated = time.time() - 72 * 3600
+    os.utime(old, (backdated, backdated))
+
+    removed = cleanup_generated(tmp_path, ttl_hours=24)
+
+    assert removed == 1
+    assert not old.exists()
+    assert fresh.exists()
+    assert stranger.exists()
+
+
+def test_cleanup_disabled_when_ttl_non_positive(tmp_path):
+    old = tmp_path / ("c" * 32)
+    old.mkdir()
+    backdated = time.time() - 999 * 3600
+    os.utime(old, (backdated, backdated))
+
+    assert cleanup_generated(tmp_path, ttl_hours=0) == 0
+    assert old.exists()
+
+
+def test_generate_sweeps_old_jobs(client, sample_jd, sample_resume):
+    # client.GEN is the tmp_path; drop in a stale job dir and confirm /generate clears it.
+    stale = main.GEN / ("d" * 32)
+    stale.mkdir()
+    backdated = time.time() - 72 * 3600
+    os.utime(stale, (backdated, backdated))
+
+    r = client.post("/generate", data={
+        "jd": sample_jd, "resume": sample_resume, "provider": "mock",
+    })
+    assert r.status_code == 200
+    assert not stale.exists()

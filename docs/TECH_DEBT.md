@@ -17,11 +17,11 @@ on one.
 **Fix:** convert/measure via LibreOffice headless or a docx→pdf check in CI; or
 mirror the PDF's scale decision into font sizing. **Workaround:** trim a bullet.
 
-### 2. `generated/` is never cleaned up 🟡
-Every run writes four files under `generated/<job>/` and nothing deletes them.
-On a long-lived server this grows unbounded.
-**Fix:** a TTL sweep (delete dirs older than N hours) on startup or via a
-background task; or stream files and delete immediately after download.
+### 2. `generated/` cleanup 🟡 — ✅ resolved
+Every run writes four files under `generated/<job>/`. `cleanup_generated()` now
+runs at the start of each `/generate` request, deleting job dirs older than
+`GENERATED_TTL_HOURS` (default 24; set `0` to disable). Only the 32-hex dirs the
+app created are ever touched, so anything else left in `generated/` is safe.
 
 ### 3. Synchronous, blocking generation 🟡
 `/generate` calls the CLI provider synchronously inside the request handler.
@@ -43,13 +43,13 @@ phone/skill detection can be approximate.
 **Fix:** none needed — it's intentional. Just don't mistake mock output for a
 real tailoring.
 
-### 6. Limited repair of malformed model JSON 🟡
+### 6. Repair of malformed model JSON 🟡 — ✅ resolved
 `extract_json` strips fences/prose and `parse_docs` uses `json.loads(strict=False)`,
-so literal newlines/tabs inside string values (common from smaller local models
-like llama3.2) now parse fine. Still unhandled: trailing commas, truncated output,
-or prose mixed into the object — these raise and the user sees a 400.
-**Fix:** one automatic retry with a "return JSON only" reminder, or a tolerant
-JSON-repair pass (close unbalanced braces, strip trailing commas) before failing.
+so literal newlines/tabs inside string values parse fine. On top of that,
+`_repair_json` now makes a tolerant pass (normalise curly quotes, strip trailing
+commas) and `generate_documents` **retries once** with a "return JSON only"
+reminder before surfacing an error. Still best-effort: severely truncated output
+can still 400.
 
 ### 7. One fixed layout/theme 🟢
 A single visual template is hard-coded across PDF/DOCX/preview.
@@ -65,10 +65,10 @@ No upload/parsing of an existing `.pdf`/`.docx` resume.
 Ollama's first run can take ~a minute with only a static "Working…" banner.
 **Fix:** stream tokens/heartbeats via SSE/websocket to a progress indicator.
 
-### 10. No CI pipeline 🟡
-Tests exist but aren't wired to run automatically on push.
-**Fix:** a GitHub Actions workflow that sets up Python 3.12, installs deps, and
-runs `pytest` (offline — the mock engine makes this trivial).
+### 10. CI pipeline 🟡 — ✅ resolved
+`.github/workflows/ci.yml` runs on every push and pull request: it sets up
+Python 3.12, installs `requirements.txt`, and runs `pytest` (fully offline via
+the mock engine).
 
 ### 11. Pinned to Python 3.12 🟢
 pydantic-core lacks 3.14 wheels; the venv must be 3.12/3.13. Documented, but a
@@ -83,15 +83,15 @@ document clearly (done in README/USER_MANUAL).
 | # | Item | Impact | Effort |
 | --- | --- | --- | --- |
 | 1 | DOCX no measured fit | 🟡 | M |
-| 2 | `generated/` no cleanup | 🟡 | S |
+| 2 | `generated/` cleanup | ✅ done | S |
 | 3 | Blocking generation | 🟡 | M |
 | 4 | No auth/rate limit (if hosted) | 🔴 | M |
 | 5 | Mock is heuristic | 🟢 | — |
-| 6 | Limited JSON repair | 🟡 | S |
+| 6 | JSON repair + retry | ✅ done | S |
 | 7 | Single theme | 🟢 | M |
 | 8 | Paste-only input | 🟢 | M |
 | 9 | No progress streaming | 🟢 | M |
-| 10 | No CI | 🟡 | S |
+| 10 | CI pipeline | ✅ done | S |
 | 11 | Python 3.12 pin | 🟢 | — |
 
-Priorities if hardening for shared/hosted use: **#4 → #3 → #2 → #10 → #6**.
+Priorities if hardening for shared/hosted use: **#4 → #3** (#2, #6, #10 now resolved).
