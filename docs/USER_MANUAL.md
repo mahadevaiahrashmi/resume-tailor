@@ -7,8 +7,8 @@ non-technical walkthrough see [USER_GUIDE_NONTECH.md](USER_GUIDE_NONTECH.md).
 
 - **Python 3.12** (3.13 also fine; **not 3.14** — pydantic-core has no wheel yet).
 - macOS, Linux, or Windows (WSL recommended on Windows).
-- Optional engines: **Gemini CLI** and/or **Ollama** (the app also ships a mock
-  engine that needs nothing).
+- Optional engines: **Claude CLI**, **Gemini CLI**, and/or **Ollama** (the app
+  also ships a mock engine that needs nothing).
 
 ## 2. Install & run
 
@@ -33,6 +33,15 @@ python3.12 -m venv .venv
 ```
 
 ## 3. Setting up engines
+
+### Claude CLI
+```bash
+npm install -g @anthropic-ai/claude-code
+claude          # run once to sign in
+```
+The app detects `claude` on your PATH and marks it ✓ detected. Optional model:
+`sonnet` or `opus` (via the model box or `CLAUDE_MODEL`). Calls run with tools
+disabled, so the engine only returns text — it gets no file or shell access.
 
 ### Gemini CLI
 ```bash
@@ -80,6 +89,8 @@ match; if your resume is unusually long, trim a bullet or two for best fit.
 
 | Variable | Default | Effect |
 | --- | --- | --- |
+| `CLAUDE_CMD` | `claude` | Claude CLI binary name/path |
+| `CLAUDE_MODEL` | (unset) | Model passed to Claude via `--model` (e.g. `sonnet`, `opus`) |
 | `GEMINI_CMD` | `gemini` | Gemini CLI binary name/path |
 | `GEMINI_MODEL` | (unset) | Model passed to Gemini via `-m` |
 | `OLLAMA_CMD` | `ollama` | Ollama binary name/path |

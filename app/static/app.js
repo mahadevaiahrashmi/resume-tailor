@@ -1,6 +1,7 @@
 "use strict";
 
 const HINTS = {
+  claude: "Uses Anthropic's `claude` CLI. Install: npm i -g @anthropic-ai/claude-code, then sign in. Optional model: sonnet / opus.",
   gemini: "Uses Google's `gemini` CLI. Install: npm i -g @google/gemini-cli, then sign in.",
   ollama: "Open-source. Install from ollama.com, then `ollama pull llama3.1`. Set a model at right.",
   mock: "Offline preview — reshapes your resume without a model. Great for checking the layout.",
@@ -22,7 +23,7 @@ async function loadProviders() {
     list.forEach((p) => (AVAILABILITY[p.name] = p.available));
   } catch (_) { /* non-fatal */ }
   // Default to the first detected engine so users aren't pointed at an
-  // uninstalled one. Order follows the dropdown (gemini, ollama, mock).
+  // uninstalled one. Order follows the dropdown (claude, gemini, ollama, mock).
   const sel = document.getElementById("provider");
   if (!AVAILABILITY[sel.value]) {
     const firstAvail = Array.from(sel.options).find((o) => AVAILABILITY[o.value]);

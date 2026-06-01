@@ -14,6 +14,7 @@ flowchart TD
     API --> G[generator.py]
     G --> P[prompts.build_prompt]
     G --> PR{Provider}
+    PR --> CLA[Claude CLI]
     PR --> GEM[Gemini CLI]
     PR --> OLL[Ollama]
     PR --> MOCK[Mock]
@@ -34,7 +35,7 @@ flowchart TD
 | `app/generator.py` | Orchestration: build prompt → call provider → extract & validate JSON → `TailoredDocs`. |
 | `app/prompts.py` | The tailoring prompt, JSON contract, and honesty/length rules. |
 | `app/schema.py` | pydantic models — the single contract between model output and renderers. |
-| `app/providers/` | Provider interface + Gemini CLI, Ollama, Mock implementations + registry. |
+| `app/providers/` | Provider interface + Claude CLI, Gemini CLI, Ollama, Mock implementations + registry. |
 | `app/render_pdf.py` | reportlab renderer with one-page auto-fit. |
 | `app/render_docx.py` | python-docx renderer (compact typography for one page). |
 | `app/templates/index.html` | Single-page form + result UI. |
@@ -102,7 +103,8 @@ No other code changes — the generator, schema, and renderers are untouched.
 
 - **Python 3.12** (pydantic-core lacks 3.14 wheels).
 - Configuration is environment-only (no config files):
-  `GEMINI_CMD`, `GEMINI_MODEL`, `OLLAMA_CMD`, `OLLAMA_MODEL`.
+  `CLAUDE_CMD`, `CLAUDE_MODEL`, `GEMINI_CMD`, `GEMINI_MODEL`, `OLLAMA_CMD`,
+  `OLLAMA_MODEL`.
 - State is the filesystem: generated files live under `generated/<job-hex>/`.
 
 ## Why no database / queue

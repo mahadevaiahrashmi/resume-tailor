@@ -13,8 +13,9 @@ is uploaded to a third-party server by this app.
 
 ## Features
 
-- **Three engines, one interface**
-  - **Gemini CLI** — Google's `gemini` CLI (best quality if you have it).
+- **Four engines, one interface**
+  - **Claude CLI** — Anthropic's `claude` CLI (highest quality if you have it).
+  - **Gemini CLI** — Google's `gemini` CLI.
   - **Ollama** — fully open-source, runs models like `llama3.1` locally.
   - **Mock** — offline, no model required; reshapes your resume so you can
     preview the layout instantly. Always available.
@@ -48,6 +49,7 @@ python3.12 -m venv .venv
 
 | Engine | Install | Notes |
 | --- | --- | --- |
+| **Claude CLI** | `npm install -g @anthropic-ai/claude-code`, then run `claude` once to sign in | Optional model `sonnet`/`opus` via the model box or `CLAUDE_MODEL` |
 | **Gemini CLI** | `npm install -g @google/gemini-cli`, then run `gemini` once to sign in | Set model with the optional model box or `GEMINI_MODEL` |
 | **Ollama** | Install from [ollama.com](https://ollama.com), then `ollama pull llama3.1` | Default model `llama3.1`; override per-run or with `OLLAMA_MODEL` |
 | **Mock** | Nothing | Offline preview only; does not truly rewrite text |
@@ -61,7 +63,7 @@ auto-selects the first available one.
 Job description + Resume + Instructions
         │
         ▼
-   build_prompt()  ──►  Provider (Gemini / Ollama / Mock)  ──►  raw JSON
+   build_prompt()  ──►  Provider (Claude / Gemini / Ollama / Mock)  ──►  raw JSON
         │
         ▼
    parse_docs()  →  validated TailoredDocs (pydantic)
@@ -84,10 +86,10 @@ resume-tailor/
 │   ├── schema.py          pydantic models (the LLM output contract)
 │   ├── render_pdf.py      reportlab → 1-page PDF (auto-fit)
 │   ├── render_docx.py     python-docx → Word
-│   ├── providers/         gemini_cli, ollama, mock + registry
+│   ├── providers/         claude_cli, gemini_cli, ollama, mock + registry
 │   ├── templates/         index.html
 │   └── static/            style.css, app.js
-├── tests/                 pytest suite (40 tests)
+├── tests/                 pytest suite (45 tests)
 ├── docs/                  product, architecture, user, test docs
 ├── requirements.txt
 └── run.sh

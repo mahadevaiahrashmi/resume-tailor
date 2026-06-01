@@ -15,8 +15,8 @@ without handing their resume to an opaque cloud service.
 - G1. Turn a job description + an existing resume into a tailored resume **and**
   cover letter in one action.
 - G2. Output **one-page** documents in **both .docx and .pdf**.
-- G3. Run on a **local** AI engine, with **Gemini CLI** and an **open-source**
-  alternative (**Ollama**) both supported.
+- G3. Run on a **local** AI engine, with hosted CLIs (**Claude CLI**,
+  **Gemini CLI**) and an **open-source** alternative (**Ollama**) all supported.
 - G4. Be **honest by construction** — never fabricate experience; only reframe
   what the resume contains.
 - G5. Work **offline for preview** so users can try the layout with no model
@@ -52,8 +52,8 @@ without handing their resume to an opaque cloud service.
 | ID | Requirement |
 | --- | --- |
 | FR1 | Accept three inputs: job description (required), resume (required), extra instructions (optional). |
-| FR2 | Offer engine selection: Gemini CLI, Ollama, Mock; show detection status. |
-| FR3 | Allow an optional model override per run (e.g. `qwen2.5`, `gemini-2.5-flash`). |
+| FR2 | Offer engine selection: Claude CLI, Gemini CLI, Ollama, Mock; show detection status. |
+| FR3 | Allow an optional model override per run (e.g. `sonnet`, `qwen2.5`, `gemini-2.5-flash`). |
 | FR4 | Produce a tailored resume and cover letter as validated structured data. |
 | FR5 | Render each document to one-page **PDF** and **Word**. |
 | FR6 | Return four downloadable files and a live HTML preview of both documents. |

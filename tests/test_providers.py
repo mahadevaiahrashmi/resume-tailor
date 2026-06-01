@@ -11,6 +11,7 @@ from app.providers import (
     get_provider,
     list_providers,
 )
+from app.providers.claude_cli import ClaudeCLIProvider
 from app.providers.gemini_cli import GeminiCLIProvider
 from app.providers.ollama import OllamaProvider
 
@@ -33,7 +34,7 @@ def test_get_provider_unknown_raises():
 
 def test_list_providers_shape():
     provs = list_providers()
-    assert {p["name"] for p in provs} == {"gemini", "ollama", "mock"}
+    assert {p["name"] for p in provs} == {"claude", "gemini", "ollama", "mock"}
     assert all({"name", "label", "available"} <= set(p) for p in provs)
     mock = next(p for p in provs if p["name"] == "mock")
     assert mock["available"] is True
@@ -63,6 +64,32 @@ def test_gemini_builds_argv_without_model(monkeypatch):
                         lambda cmd, prompt, timeout=180: seen.update(cmd=cmd) or "{}")
     GeminiCLIProvider().generate("PROMPT")
     assert seen["cmd"] == ["gemini"]
+
+
+def test_claude_builds_argv_with_model(monkeypatch):
+    monkeypatch.delenv("CLAUDE_CMD", raising=False)
+    monkeypatch.delenv("CLAUDE_MODEL", raising=False)
+    seen = {}
+
+    def fake_run_cli(cmd, prompt, timeout=180):
+        seen["cmd"], seen["prompt"] = cmd, prompt
+        return '{"ok": true}'
+
+    monkeypatch.setattr("app.providers.claude_cli.run_cli", fake_run_cli)
+    out = ClaudeCLIProvider(model="opus").generate("PROMPT")
+    assert seen["cmd"] == ["claude", "-p", "--output-format", "text", "--tools", "", "--model", "opus"]
+    assert seen["prompt"] == "PROMPT"
+    assert out == '{"ok": true}'
+
+
+def test_claude_builds_argv_without_model(monkeypatch):
+    monkeypatch.delenv("CLAUDE_CMD", raising=False)
+    monkeypatch.delenv("CLAUDE_MODEL", raising=False)
+    seen = {}
+    monkeypatch.setattr("app.providers.claude_cli.run_cli",
+                        lambda cmd, prompt, timeout=180: seen.update(cmd=cmd) or "{}")
+    ClaudeCLIProvider().generate("PROMPT")
+    assert seen["cmd"] == ["claude", "-p", "--output-format", "text", "--tools", ""]
 
 
 def test_ollama_builds_run_argv(monkeypatch):

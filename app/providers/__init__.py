@@ -2,17 +2,19 @@
 from __future__ import annotations
 
 from .base import LLMProvider, ProviderError
+from .claude_cli import ClaudeCLIProvider
 from .gemini_cli import GeminiCLIProvider
 from .mock import MockProvider
 from .ollama import OllamaProvider
 
 PROVIDERS: dict[str, type[LLMProvider]] = {
+    "claude": ClaudeCLIProvider,
     "gemini": GeminiCLIProvider,
     "ollama": OllamaProvider,
     "mock": MockProvider,
 }
 
-_NEEDS_MODEL = {"gemini", "ollama"}
+_NEEDS_MODEL = {"claude", "gemini", "ollama"}
 
 
 def get_provider(name: str | None, model: str | None = None) -> LLMProvider:
@@ -43,6 +45,7 @@ def list_providers() -> list[dict]:
 __all__ = [
     "LLMProvider",
     "ProviderError",
+    "ClaudeCLIProvider",
     "GeminiCLIProvider",
     "OllamaProvider",
     "MockProvider",
