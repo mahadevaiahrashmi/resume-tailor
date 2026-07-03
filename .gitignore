@@ -7,3 +7,4 @@ generated/
 *.docx
 *.pdf
 .DS_Store
+server.log
