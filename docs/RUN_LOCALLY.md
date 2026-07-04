@@ -46,6 +46,33 @@ development, add uvicorn's `--reload` (passed straight through by `run.sh`):
 
 ---
 
+## Configure an engine (optional)
+
+The app runs out of the box with the offline **mock** engine — but mock only
+reshapes your text for layout preview, it doesn't truly rewrite. For genuine
+tailoring, set up at least one real engine. Each engine's model can be picked from
+the UI dropdown or pinned with an environment variable.
+
+| Engine | Install | Model override |
+| --- | --- | --- |
+| **Claude CLI** | `npm install -g @anthropic-ai/claude-code`, then run `claude` once to sign in | `CLAUDE_MODEL` (e.g. `sonnet`, `opus`) |
+| **Gemini CLI** | `npm install -g @google/gemini-cli`, then run `gemini` once to sign in | `GEMINI_MODEL` |
+| **Ollama** | Install from [ollama.com](https://ollama.com), then `ollama pull llama3.1` | `OLLAMA_MODEL` (default `llama3.1`) |
+| **OpenRouter** | Create a key at [openrouter.ai/keys](https://openrouter.ai/keys), then export `OPENROUTER_API_KEY` — **hosted/paid** | `OPENROUTER_MODEL` (default `deepseek/deepseek-chat`) |
+
+For OpenRouter, export the key **before** starting the server (the app reads it
+from the environment and never stores it):
+
+```bash
+export OPENROUTER_API_KEY=sk-or-...
+./run.sh
+```
+
+More on picking one in the README's [Choosing an engine](../README.md#choosing-an-engine).
+Confirm what's detected with the `/providers` check under [Verify it's up](#verify-its-up).
+
+---
+
 ## Optional configuration (environment variables)
 
 Set these **before** starting the server:
@@ -106,11 +133,13 @@ Stop it with the `lsof ... | xargs kill` command above.
 ## Verify it's up
 
 ```bash
-curl -s http://127.0.0.1:8000/providers
+curl -s http://127.0.0.1:8000/providers | python3 -m json.tool
 ```
 
-You should get a JSON list of engines with their availability. The browser form
-at `http://127.0.0.1:8000` should also load.
+You should get a JSON list of engines with their availability. Each entry's
+`available` field reflects whether that engine's CLI is installed (or, for
+OpenRouter, whether `OPENROUTER_API_KEY` is set); **mock** is always available. The
+browser form at `http://127.0.0.1:8000` should also load.
 
 ---
 
@@ -121,6 +150,8 @@ Runs fully offline via the mock engine — no model or network needed:
 ```bash
 ./.venv/bin/python -m pytest
 ```
+
+You should see **65 passing**.
 
 ---
 
@@ -134,3 +165,9 @@ Runs fully offline via the mock engine — no model or network needed:
 - **OpenRouter shows unavailable** — the key isn't in the environment of the
   process that started the server. `export OPENROUTER_API_KEY=...` first, then
   restart.
+- **Dropdown / `/providers` shows only Mock** — no engine CLI was detected.
+  Install one (see [Configure an engine](#configure-an-engine-optional)) and
+  reload; for OpenRouter confirm `OPENROUTER_API_KEY` is exported in the **same
+  shell** that starts the server.
+- **Generated files piling up** — lower `GENERATED_TTL_HOURS`, or delete
+  `generated/` (it's git-ignored and safe to remove).

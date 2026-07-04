@@ -115,6 +115,7 @@ The suite runs fully offline using the mock provider. See
 
 | Doc | For |
 | --- | --- |
+| [RUN_LOCALLY.md](docs/RUN_LOCALLY.md) | Start/stop the app locally & set up an engine |
 | [PRD.md](docs/PRD.md) | Product requirements |
 | [PRODUCT_DESIGN.md](docs/PRODUCT_DESIGN.md) | UX and design decisions |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components and structure |
